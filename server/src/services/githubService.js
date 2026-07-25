@@ -339,6 +339,209 @@ export async function getReleases(owner, repo, { perPage = 10 } = {}) {
 }
 
 /**
+ * Create a per-analysis GitHub context with request caching.
+ *
+ * WHY CACHE?
+ * During one analysis we may ask for the same tree/file twice.
+ * Caching inside a single run avoids duplicate rate-limit spend.
+ * The cache is NOT shared across HTTP requests (keeps data fresh).
+ */
+export function createGitHubAnalysisContext() {
+  const client = createGitHubClient()
+  const cache = new Map()
+
+  return {
+    client,
+    async get(path, config = {}) {
+      const key = `${path}::${JSON.stringify(config.params || {})}`
+      if (cache.has(key)) {
+        return cache.get(key)
+      }
+
+      const pending = client
+        .get(path, config)
+        .then((response) => response.data)
+        .catch((error) => {
+          // Do not poison the cache with a failed promise forever for this key.
+          cache.delete(key)
+          throw error
+        })
+
+      cache.set(key, pending)
+      return pending
+    },
+  }
+}
+
+/**
+ * Run async work over a list with a hard concurrency cap.
+ *
+ * WHY?
+ * Unlimited Promise.all on hundreds of GitHub calls can burn the hourly
+ * rate limit in seconds and overwhelm both our server and GitHub.
+ */
+export async function mapWithConcurrency(items, limit, mapper) {
+  const results = new Array(items.length)
+  let nextIndex = 0
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const current = nextIndex
+      nextIndex += 1
+      results[current] = await mapper(items[current], current)
+    }
+  }
+
+  const workerCount = Math.max(1, Math.min(limit, items.length || 1))
+  await Promise.all(Array.from({ length: workerCount }, () => worker()))
+  return results
+}
+
+/**
+ * STEP 2 — Repository File Scanner
+ * --------------------------------
+ * GitHub Trees API:
+ *   GET /repos/{owner}/{repo}/git/trees/{tree_sha}?recursive=1
+ *
+ * The tree_sha is usually the commit SHA of the default branch tip.
+ * With recursive=1 GitHub flattens the whole repo into one list of blobs/trees.
+ * We keep only blobs (files). Folders are type === "tree" and are ignored.
+ *
+ * Note: very large repos may return truncated:true. We still score what we get.
+ */
+export async function getRepositoryTree(owner, repo, { branch, context } = {}) {
+  const ctx = context || createGitHubAnalysisContext()
+
+  try {
+    // Resolve branch → commit SHA so the tree matches the branch tip.
+    const branchName = branch || 'main'
+    let treeSha = branchName
+
+    try {
+      const branchData = await ctx.get(`/repos/${owner}/${repo}/branches/${encodeURIComponent(branchName)}`)
+      treeSha = branchData.commit?.sha || branchName
+    } catch {
+      // Fall back to using the branch name directly if the branch lookup fails.
+      treeSha = branchName
+    }
+
+    const treeData = await ctx.get(`/repos/${owner}/${repo}/git/trees/${treeSha}`, {
+      params: { recursive: 1 },
+    })
+
+    const entries = Array.isArray(treeData.tree) ? treeData.tree : []
+
+    const files = entries
+      // Ignore folders — only files ("blob") matter for debt scanning.
+      .filter((entry) => entry.type === 'blob')
+      .map((entry) => {
+        const path = entry.path || ''
+        const parts = path.split('/')
+        const fileName = parts[parts.length - 1] || path
+        const dot = fileName.lastIndexOf('.')
+        const extension = dot > 0 ? fileName.slice(dot + 1).toLowerCase() : ''
+
+        return {
+          path,
+          fileName,
+          fileSize: entry.size ?? 0,
+          fileExtension: extension,
+          sha: entry.sha,
+        }
+      })
+
+    return {
+      files,
+      truncated: Boolean(treeData.truncated),
+      treeSha,
+    }
+  } catch (error) {
+    if (error.statusCode) throw error
+    handleGitHubError(error, owner, repo)
+  }
+}
+
+/**
+ * Fetch one file's text content via the Contents API.
+ * GET /repos/{owner}/{repo}/contents/{path}
+ */
+export async function getFileContent(owner, repo, path, { context, ref } = {}) {
+  const ctx = context || createGitHubAnalysisContext()
+
+  try {
+    const data = await ctx.get(
+      `/repos/${owner}/${repo}/contents/${path
+        .split('/')
+        .map((segment) => encodeURIComponent(segment))
+        .join('/')}`,
+      { params: ref ? { ref } : undefined },
+    )
+
+    // Directories accidentally requested would return an array — skip them.
+    if (Array.isArray(data) || !data.content) {
+      return { path, content: '', size: 0, encoding: null }
+    }
+
+    const encoding = data.encoding || 'base64'
+    const content =
+      encoding === 'base64'
+        ? Buffer.from(data.content || '', 'base64').toString('utf8')
+        : String(data.content || '')
+
+    return {
+      path: data.path || path,
+      content,
+      size: data.size ?? content.length,
+      encoding,
+      sha: data.sha,
+    }
+  } catch (error) {
+    if (error.statusCode) throw error
+    if (error.response?.status === 404) {
+      return { path, content: '', size: 0, encoding: null }
+    }
+    // Files larger than ~1MB are not returned by Contents API as base64.
+    if (error.response?.status === 403) {
+      return { path, content: '', size: 0, encoding: null, skipped: true }
+    }
+    handleGitHubError(error, owner, repo)
+  }
+}
+
+/**
+ * STEP 6 — Commit history for a single file path.
+ * GET /repos/{owner}/{repo}/commits?path={path}
+ *
+ * Returns recent commits touching that file so we can estimate churn.
+ */
+export async function getCommitHistoryForFile(owner, repo, path, { context, perPage = 30 } = {}) {
+  const ctx = context || createGitHubAnalysisContext()
+
+  try {
+    const data = await ctx.get(`/repos/${owner}/${repo}/commits`, {
+      params: { path, per_page: perPage },
+    })
+
+    if (!Array.isArray(data)) {
+      return []
+    }
+
+    return data.map((commit) => ({
+      sha: commit.sha,
+      date: commit.commit?.author?.date || commit.commit?.committer?.date || null,
+      authorLogin: commit.author?.login || commit.commit?.author?.name || null,
+      message: commit.commit?.message || '',
+    }))
+  } catch (error) {
+    if (error.statusCode) throw error
+    if (error.response?.status === 409 || error.response?.status === 404) {
+      return []
+    }
+    handleGitHubError(error, owner, repo)
+  }
+}
+
+/**
  * Convenience orchestrator used by the controller.
  * Fetches everything scoring needs in parallel for speed.
  */

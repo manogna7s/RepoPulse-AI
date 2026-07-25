@@ -7,11 +7,13 @@
  *   3) send a consistent response
  *
  * They do NOT call the GitHub API directly — that stays in githubService.
- * They do NOT calculate scores — that stays in scoringService.
+ * They do NOT calculate scores — that stays in scoringService /
+ * technicalDebtService.
  */
 
 import { fetchRepositoryBundle } from '../services/githubService.js'
 import { calculateRepositoryScores } from '../services/scoringService.js'
+import { analyzeTechnicalDebt } from '../services/technicalDebtService.js'
 import { parseGitHubUrl } from '../utils/githubParser.js'
 import { successResponse } from '../utils/response.js'
 
@@ -20,7 +22,11 @@ import { successResponse } from '../utils/response.js'
  * Body: { "url": "https://github.com/facebook/react" }
  *
  * Flow:
- *   validate URL → fetch GitHub bundle → run heuristic scores → respond
+ *   validate URL
+ *   → fetch GitHub bundle
+ *   → engineering health scores
+ *   → technical debt prediction
+ *   → respond
  *
  * Deliberately does NOT call Gemini / AI in this phase.
  */
@@ -37,7 +43,12 @@ export async function analyzeRepository(request, response, next) {
     // 2) Run deterministic Engineering Intelligence scoring (no AI).
     const { scores, engineeringHealth } = calculateRepositoryScores(bundle)
 
-    // 3) Shape the public API payload. Full README text is omitted on purpose
+    // 3) Predict technical debt hotspots (heuristic, rate-limit aware).
+    const debtResult = await analyzeTechnicalDebt(owner, repo, {
+      defaultBranch: bundle.repository.defaultBranch,
+    })
+
+    // 4) Shape the public API payload. Full README text is omitted on purpose
     //    (it can be huge); scoring already consumed it internally.
     const repository = {
       ...bundle.repository,
@@ -60,12 +71,12 @@ export async function analyzeRepository(request, response, next) {
     return successResponse(response, {
       statusCode: 200,
       message: `Engineering analysis complete for ${owner}/${repo}`,
-      // Nested under data to keep the global success envelope consistent,
-      // while matching the product fields from the Engineering Intelligence phase.
       data: {
         repository,
         scores,
         engineeringHealth,
+        technicalDebt: debtResult.technicalDebt,
+        technicalDebtMeta: debtResult.meta,
       },
     })
   } catch (error) {
