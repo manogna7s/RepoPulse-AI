@@ -1,20 +1,34 @@
-/**
- * WHY THIS FILE EXISTS
- * --------------------
- * Database connection is infrastructure, not business logic.
- * Controllers/services should ask Mongoose for documents — they should never
- * call mongoose.connect themselves. That keeps startup concerns in one place
- * and makes the API easier to test.
- */
-
 import mongoose from 'mongoose'
 import env from './env.js'
 
 const MAX_RETRIES = 3
 const RETRY_DELAY_MS = 2000
+const DEFAULT_DB_NAME = 'repopulse'
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * Atlas URIs often omit the database name (/?retryWrites=...).
+ * Without one, Mongoose silently uses "test". Force /repopulse instead.
+ */
+export function normalizeMongoUri(uri, dbName = DEFAULT_DB_NAME) {
+  if (!uri) return uri
+
+  const match = uri.match(/^(mongodb(?:\+srv)?:\/\/[^/?]+)(\/[^?]*)?(\?.*)?$/i)
+  if (!match) return uri
+
+  const base = match[1]
+  const path = match[2]
+  const query = match[3] || ''
+
+  // Missing path, bare "/", or empty path → inject default database name.
+  if (!path || path === '/' ) {
+    return `${base}/${dbName}${query}`
+  }
+
+  return uri
 }
 
 /**
@@ -39,12 +53,13 @@ export async function connectDB() {
 
   mongoose.set('strictQuery', true)
 
+  const uri = normalizeMongoUri(env.mongoUri)
   let lastError
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
     try {
-      await mongoose.connect(env.mongoUri)
-      console.log('Database: connected to MongoDB')
+      await mongoose.connect(uri)
+      console.log(`Database: connected to MongoDB (${mongoose.connection.name})`)
       return true
     } catch (error) {
       lastError = error

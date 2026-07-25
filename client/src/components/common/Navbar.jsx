@@ -18,6 +18,7 @@ function Navbar() {
     { to: '/', label: 'Home' },
     { to: '/dashboard', label: 'Dashboard' },
     { to: '/history', label: 'History' },
+    { to: '/compare', label: 'Compare' },
   ]
 
   return (

@@ -5,13 +5,9 @@
  *   1) read the request body
  *   2) call services / utilities
  *   3) send a consistent response
- *
- * They do NOT call the GitHub API directly — that stays in githubService.
- * They do NOT calculate scores — that stays in scoringService /
- * technicalDebtService.
- * They do NOT write MongoDB documents — that stays in analysisService.
  */
 
+import { generateRepositoryInsights } from '../services/aiService.js'
 import { saveAnalysisIfNew } from '../services/analysisService.js'
 import { fetchRepositoryBundle } from '../services/githubService.js'
 import { calculateRepositoryScores } from '../services/scoringService.js'
@@ -21,37 +17,29 @@ import { successResponse } from '../utils/response.js'
 
 /**
  * POST /api/repository/analyze
- * Body: { "url": "https://github.com/facebook/react" }
  *
  * Flow:
  *   validate URL
- *   → fetch GitHub bundle
- *   → engineering health scores
- *   → technical debt prediction
- *   → persist (unless duplicate within 1 hour)
+ *   → GitHub bundle
+ *   → heuristic scores
+ *   → technical debt
+ *   → Gemini insights (non-fatal)
+ *   → persist
  *   → respond
  */
 export async function analyzeRepository(request, response, next) {
   try {
     const { url } = request.body ?? {}
 
-    // parseGitHubUrl throws a 400 AppError for bad input.
     const { owner, repo } = parseGitHubUrl(url)
     const repositoryUrl = `https://github.com/${owner}/${repo}`
 
-    // 1) Fetch raw signals from GitHub (network I/O only).
     const bundle = await fetchRepositoryBundle(owner, repo)
-
-    // 2) Run deterministic Engineering Intelligence scoring (no AI).
     const { scores, engineeringHealth } = calculateRepositoryScores(bundle)
-
-    // 3) Predict technical debt hotspots (heuristic, rate-limit aware).
     const debtResult = await analyzeTechnicalDebt(owner, repo, {
       defaultBranch: bundle.repository.defaultBranch,
     })
 
-    // 4) Shape the public API payload. Full README text is omitted on purpose
-    //    (it can be huge); scoring already consumed it internally.
     const repository = {
       ...bundle.repository,
       contributors: bundle.contributors,
@@ -71,15 +59,23 @@ export async function analyzeRepository(request, response, next) {
         : { exists: false },
     }
 
+    // Gemini explains metrics. Failures must NOT break the whole analysis.
+    const aiInsights = await generateRepositoryInsights({
+      repository,
+      scores,
+      engineeringHealth,
+      technicalDebt: debtResult.technicalDebt,
+    })
+
     const analysisPayload = {
       repository,
       scores,
       engineeringHealth,
       technicalDebt: debtResult.technicalDebt,
       technicalDebtMeta: debtResult.meta,
+      aiInsights,
     }
 
-    // 5) Persist for History — skipped when DB is down or analyzed recently.
     const persistence = await saveAnalysisIfNew({
       repositoryUrl,
       owner,
@@ -101,7 +97,6 @@ export async function analyzeRepository(request, response, next) {
       },
     })
   } catch (error) {
-    // Forward to the global error middleware for a consistent failure shape.
     return next(error)
   }
 }

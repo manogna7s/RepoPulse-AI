@@ -1,10 +1,5 @@
 import api from './api'
 
-/**
- * History API helpers. Kept separate from repositoryService so each service
- * owns one backend resource (repository vs history).
- */
-
 function toFriendlyError(error) {
   if (!error.response) {
     return {
@@ -22,9 +17,9 @@ function toFriendlyError(error) {
   }
 }
 
-export async function fetchHistory() {
+export async function fetchHistory(params = {}) {
   try {
-    const response = await api.get('/history')
+    const response = await api.get('/history', { params })
     return response.data.data
   } catch (error) {
     throw toFriendlyError(error)

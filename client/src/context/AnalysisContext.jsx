@@ -30,6 +30,7 @@ export function AnalysisProvider({ children }) {
       scores: analysis?.scores ?? null,
       engineeringHealth: analysis?.engineeringHealth ?? null,
       technicalDebt: analysis?.technicalDebt ?? [],
+      aiInsights: analysis?.aiInsights ?? null,
       saveAnalysis,
       clearAnalysis,
     }),

@@ -15,8 +15,11 @@ const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   mongoUri: process.env.MONGODB_URI || '',
-  // Read from .env so the GitHub token is never hardcoded in source files.
+  // Read from .env so secrets are never hardcoded in source files.
   githubToken: process.env.GITHUB_TOKEN || '',
+  geminiApiKey: process.env.GEMINI_API_KEY || '',
+  // Optional override; default matches the product requirement (Gemini 2.5 Pro).
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-pro',
 }
 
 export default env

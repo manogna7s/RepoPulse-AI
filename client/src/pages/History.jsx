@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import ErrorCard from '../components/common/ErrorCard'
 import Button from '../components/ui/Button'
@@ -19,11 +19,19 @@ function History() {
   const [error, setError] = useState(null)
   const [busyId, setBusyId] = useState(null)
 
+  const [search, setSearch] = useState('')
+  const [ownerFilter, setOwnerFilter] = useState('')
+  const [sort, setSort] = useState('newest')
+
   const loadHistory = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     try {
-      const data = await fetchHistory()
+      const data = await fetchHistory({
+        search: search.trim() || undefined,
+        owner: ownerFilter.trim() || undefined,
+        sort,
+      })
       setItems(data || [])
     } catch (err) {
       setError(err)
@@ -31,29 +39,41 @@ function History() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [search, ownerFilter, sort])
 
   useEffect(() => {
-    loadHistory()
+    const timer = setTimeout(() => {
+      loadHistory()
+    }, 250)
+    return () => clearTimeout(timer)
   }, [loadHistory])
+
+  const owners = useMemo(() => {
+    const set = new Set(items.map((item) => item.owner).filter(Boolean))
+    return [...set].sort((a, b) => a.localeCompare(b))
+  }, [items])
+
+  const replayAnalysis = (analysis) => {
+    saveAnalysis({
+      repository: analysis.repository,
+      scores: analysis.scores,
+      engineeringHealth: analysis.engineeringHealth,
+      technicalDebt: analysis.technicalDebt,
+      technicalDebtMeta: analysis.technicalDebtMeta,
+      aiInsights: analysis.aiInsights,
+      persistence: {
+        saved: true,
+        analysisId: analysis.id,
+        analysisDate: analysis.analysisDate,
+      },
+    })
+  }
 
   const handleView = async (id) => {
     setBusyId(id)
     try {
       const analysis = await fetchHistoryById(id)
-      // Replay into context so Dashboard can render without re-hitting GitHub.
-      saveAnalysis({
-        repository: analysis.repository,
-        scores: analysis.scores,
-        engineeringHealth: analysis.engineeringHealth,
-        technicalDebt: analysis.technicalDebt,
-        technicalDebtMeta: analysis.technicalDebtMeta,
-        persistence: {
-          saved: true,
-          analysisId: analysis.id,
-          analysisDate: analysis.analysisDate,
-        },
-      })
+      replayAnalysis(analysis)
       navigate('/dashboard')
     } catch (err) {
       setError(err)
@@ -83,13 +103,58 @@ function History() {
         <div>
           <h1 className="text-3xl font-bold text-white">Analysis history</h1>
           <p className="mt-2 text-sm text-slate-400">
-            Newest first. Open a past run on the dashboard without calling GitHub again.
+            Search, filter, and reopen past runs without calling GitHub again.
           </p>
         </div>
-        <Link to="/">
-          <Button>Analyze another repo</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link to="/compare">
+            <Button variant="secondary">Compare</Button>
+          </Link>
+          <Link to="/">
+            <Button>Analyze another repo</Button>
+          </Link>
+        </div>
       </div>
+
+      <Card className="grid gap-3 p-4 sm:grid-cols-3">
+        <label className="text-left text-xs text-slate-400">
+          Search repository
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="react, next.js..."
+            className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
+          />
+        </label>
+        <label className="text-left text-xs text-slate-400">
+          Filter by owner
+          <input
+            list="owner-options"
+            value={ownerFilter}
+            onChange={(event) => setOwnerFilter(event.target.value)}
+            placeholder="facebook"
+            className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
+          />
+          <datalist id="owner-options">
+            {owners.map((owner) => (
+              <option key={owner} value={owner} />
+            ))}
+          </datalist>
+        </label>
+        <label className="text-left text-xs text-slate-400">
+          Sort by
+          <select
+            value={sort}
+            onChange={(event) => setSort(event.target.value)}
+            className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
+          >
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="highest">Highest score</option>
+            <option value="lowest">Lowest score</option>
+          </select>
+        </label>
+      </Card>
 
       {error && (
         <ErrorCard
@@ -110,12 +175,11 @@ function History() {
         <Card className="p-10 text-center">
           <h2 className="text-xl font-semibold text-white">No saved analyses yet</h2>
           <p className="mt-2 text-sm text-slate-400">
-            Run an analysis from the home page. Results are stored in MongoDB when the database is connected.
+            Run an analysis from the home page. Results are stored when MongoDB is connected.
           </p>
         </Card>
       ) : (
         <>
-          {/* Desktop table */}
           <Card className="hidden overflow-hidden lg:block">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -171,7 +235,6 @@ function History() {
             </div>
           </Card>
 
-          {/* Mobile cards */}
           <div className="space-y-3 lg:hidden">
             {items.map((item) => (
               <Card key={item._id} className="p-5">

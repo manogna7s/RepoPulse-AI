@@ -27,8 +27,7 @@ function assertDatabase() {
  *
  * WHY SKIP DUPLICATES?
  * Re-clicking "Analyze" during debugging would flood the History page with
- * near-identical rows and burn MongoDB write capacity. One save per hour per
- * repo keeps history useful without blocking fresh analyses after that window.
+ * near-identical rows. One save per hour per repo keeps history useful.
  */
 export async function saveAnalysisIfNew(payload) {
   if (!isDatabaseConnected()) {
@@ -65,6 +64,7 @@ export async function saveAnalysisIfNew(payload) {
     engineeringHealth: payload.engineeringHealth,
     technicalDebt: payload.technicalDebt || [],
     technicalDebtMeta: payload.technicalDebtMeta || null,
+    aiInsights: payload.aiInsights || null,
   })
 
   return {
@@ -74,20 +74,47 @@ export async function saveAnalysisIfNew(payload) {
   }
 }
 
-/** Newest analyses first — used by the History page. */
-export async function listAnalyses({ limit = 50 } = {}) {
+/**
+ * Newest analyses first — supports optional search / owner / sort for History.
+ */
+export async function listAnalyses({
+  limit = 50,
+  search = '',
+  owner = '',
+  sort = 'newest',
+} = {}) {
   assertDatabase()
 
-  return RepositoryAnalysis.find({})
-    .sort({ analysisDate: -1 })
-    .limit(Math.min(limit, 100))
+  const filter = {}
+
+  if (owner && owner.trim()) {
+    filter.owner = new RegExp(`^${escapeRegex(owner.trim())}$`, 'i')
+  }
+
+  if (search && search.trim()) {
+    const term = escapeRegex(search.trim())
+    filter.$or = [
+      { repositoryName: new RegExp(term, 'i') },
+      { owner: new RegExp(term, 'i') },
+      { repositoryUrl: new RegExp(term, 'i') },
+    ]
+  }
+
+  let sortSpec = { analysisDate: -1 }
+  if (sort === 'oldest') sortSpec = { analysisDate: 1 }
+  if (sort === 'highest') sortSpec = { 'engineeringHealth.overallScore': -1, analysisDate: -1 }
+  if (sort === 'lowest') sortSpec = { 'engineeringHealth.overallScore': 1, analysisDate: -1 }
+
+  return RepositoryAnalysis.find(filter)
+    .sort(sortSpec)
+    .limit(Math.min(Number(limit) || 50, 100))
     .select(
-      'repositoryUrl owner repositoryName analysisDate engineeringHealth repository.name repository.fullName repository.owner createdAt',
+      'repositoryUrl owner repositoryName analysisDate engineeringHealth scores repository.name repository.fullName repository.owner aiInsights createdAt',
     )
     .lean()
 }
 
-/** Full document for replaying an analysis on the dashboard. */
+/** Full document for replaying an analysis on the dashboard / compare page. */
 export async function getAnalysisById(id) {
   assertDatabase()
 
@@ -106,4 +133,8 @@ export async function deleteAnalysisById(id) {
     throw createAppError('Analysis not found.', 404, 'ANALYSIS_NOT_FOUND')
   }
   return deleted
+}
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }

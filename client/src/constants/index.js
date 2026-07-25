@@ -13,6 +13,7 @@ export const LOADING_MESSAGES = [
   'Fetching repository...',
   'Calculating engineering metrics...',
   'Predicting technical debt...',
+  'Generating AI insights...',
   'Almost done...',
 ]
 

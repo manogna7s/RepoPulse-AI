@@ -58,6 +58,11 @@ const repositoryAnalysisSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: null,
     },
+    // Gemini narrative that explains heuristic scores (never recalculates them).
+    aiInsights: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
   },
   {
     // Automatically adds createdAt + updatedAt.
