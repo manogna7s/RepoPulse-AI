@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { AnalysisProvider } from './context/AnalysisContext'
 import MainLayout from './layouts/MainLayout'
 import Dashboard from './pages/Dashboard'
 import Home from './pages/Home'
@@ -19,8 +20,14 @@ const router = createBrowserRouter([
   },
 ])
 
+// AnalysisProvider wraps the router so analysis results survive navigation
+// between the landing page and the dashboard.
 function App() {
-  return <RouterProvider router={router} />
+  return (
+    <AnalysisProvider>
+      <RouterProvider router={router} />
+    </AnalysisProvider>
+  )
 }
 
 export default App
