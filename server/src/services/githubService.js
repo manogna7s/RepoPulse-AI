@@ -139,6 +139,7 @@ export async function getRepositoryData(owner, repo) {
       size: data.size,
       isPrivate: data.private,
       isFork: data.fork,
+      archived: data.archived,
       hasIssues: data.has_issues,
       visibility: data.visibility,
     }
@@ -215,19 +216,152 @@ export async function getLanguages(owner, repo) {
 }
 
 /**
+ * Fetch README markdown (decoded). Returns null when the repo has no README.
+ * Needed by documentation scoring — fetching stays here, scoring stays in scoringService.
+ */
+export async function getReadme(owner, repo) {
+  const client = createGitHubClient()
+
+  try {
+    const { data } = await client.get(`/repos/${owner}/${repo}/readme`)
+    const encoding = data.encoding || 'base64'
+    const content =
+      encoding === 'base64'
+        ? Buffer.from(data.content || '', 'base64').toString('utf8')
+        : String(data.content || '')
+
+    return {
+      name: data.name,
+      path: data.path,
+      size: data.size,
+      content,
+    }
+  } catch (error) {
+    if (error.statusCode) throw error
+    // 404 means "no README" — that is valid input for documentation scoring.
+    if (error.response?.status === 404) {
+      return null
+    }
+    handleGitHubError(error, owner, repo)
+  }
+}
+
+/**
+ * List root-level files/folders so dependency scoring can detect manifests
+ * like package.json or requirements.txt without cloning the repo.
+ */
+export async function getRootContents(owner, repo) {
+  const client = createGitHubClient()
+
+  try {
+    const { data } = await client.get(`/repos/${owner}/${repo}/contents/`)
+    if (!Array.isArray(data)) {
+      return []
+    }
+
+    return data.map((item) => ({
+      name: item.name,
+      path: item.path,
+      type: item.type,
+      size: item.size ?? 0,
+    }))
+  } catch (error) {
+    if (error.statusCode) throw error
+    if (error.response?.status === 404) {
+      return []
+    }
+    handleGitHubError(error, owner, repo)
+  }
+}
+
+/**
+ * Fetch recent commits for activity scoring (date of newest + rough frequency).
+ */
+export async function getRecentCommits(owner, repo, { perPage = 30 } = {}) {
+  const client = createGitHubClient()
+
+  try {
+    const { data } = await client.get(`/repos/${owner}/${repo}/commits`, {
+      params: { per_page: perPage },
+    })
+
+    if (!Array.isArray(data)) {
+      return []
+    }
+
+    return data.map((commit) => ({
+      sha: commit.sha,
+      message: commit.commit?.message ?? '',
+      date: commit.commit?.author?.date || commit.commit?.committer?.date || null,
+      authorLogin: commit.author?.login ?? commit.commit?.author?.name ?? null,
+    }))
+  } catch (error) {
+    if (error.statusCode) throw error
+    // Empty / blocked commit lists should not crash analysis.
+    if (error.response?.status === 409 || error.response?.status === 404) {
+      return []
+    }
+    handleGitHubError(error, owner, repo)
+  }
+}
+
+/**
+ * Fetch recent releases for community + activity scoring.
+ */
+export async function getReleases(owner, repo, { perPage = 10 } = {}) {
+  const client = createGitHubClient()
+
+  try {
+    const { data } = await client.get(`/repos/${owner}/${repo}/releases`, {
+      params: { per_page: perPage },
+    })
+
+    if (!Array.isArray(data)) {
+      return []
+    }
+
+    return data.map((release) => ({
+      id: release.id,
+      tagName: release.tag_name,
+      name: release.name,
+      draft: release.draft,
+      prerelease: release.prerelease,
+      createdAt: release.created_at,
+      publishedAt: release.published_at,
+    }))
+  } catch (error) {
+    if (error.statusCode) throw error
+    if (error.response?.status === 404) {
+      return []
+    }
+    handleGitHubError(error, owner, repo)
+  }
+}
+
+/**
  * Convenience orchestrator used by the controller.
- * Fetches repository + contributors + languages in parallel for speed.
+ * Fetches everything scoring needs in parallel for speed.
  */
 export async function fetchRepositoryBundle(owner, repo) {
-  const [repository, contributors, languages] = await Promise.all([
-    getRepositoryData(owner, repo),
-    getContributors(owner, repo),
-    getLanguages(owner, repo),
-  ])
+  const [repository, contributors, languages, readme, rootContents, commits, releases] =
+    await Promise.all([
+      getRepositoryData(owner, repo),
+      // More contributors improves community heuristics (GitHub max page size is 100).
+      getContributors(owner, repo, { perPage: 100 }),
+      getLanguages(owner, repo),
+      getReadme(owner, repo),
+      getRootContents(owner, repo),
+      getRecentCommits(owner, repo),
+      getReleases(owner, repo),
+    ])
 
   return {
     repository,
     contributors,
     languages,
+    readme,
+    rootContents,
+    commits,
+    releases,
   }
 }
