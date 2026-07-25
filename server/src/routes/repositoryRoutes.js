@@ -1,11 +1,8 @@
 /**
  * WHY THIS FILE EXISTS
  * --------------------
- * Repository routes declare the public URLs for analysis features.
- * Controllers are wired here; services are never imported into route files.
- *
- * The analyze endpoint is registered so the module is "plugged in",
- * but it currently returns 501 Not Implemented on purpose.
+ * Routes only answer: "Which URL maps to which controller?"
+ * No GitHub calls and no response formatting live here.
  */
 
 import { Router } from 'express'
@@ -13,8 +10,7 @@ import { analyzeRepository } from '../controllers/repositoryController.js'
 
 const repositoryRouter = Router()
 
-// POST /api/repositories/analyze
-// TODO: Add request validation middleware before calling the controller.
+// POST /api/repository/analyze
 repositoryRouter.post('/analyze', analyzeRepository)
 
 export default repositoryRouter

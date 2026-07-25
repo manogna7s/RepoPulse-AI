@@ -15,6 +15,8 @@ const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   mongoUri: process.env.MONGODB_URI || '',
+  // Read from .env so the GitHub token is never hardcoded in source files.
+  githubToken: process.env.GITHUB_TOKEN || '',
 }
 
 export default env

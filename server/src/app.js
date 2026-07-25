@@ -33,7 +33,8 @@ app.use(express.json())
 
 // --- Feature routes (each module owns its own router) ---
 app.use('/api/health', healthRouter)
-app.use('/api/repositories', repositoryRouter)
+// Singular path matches the product API: POST /api/repository/analyze
+app.use('/api/repository', repositoryRouter)
 
 // --- Fallback handlers (must stay AFTER routes) ---
 app.use(notFound)

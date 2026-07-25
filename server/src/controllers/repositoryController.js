@@ -1,25 +1,41 @@
 /**
  * WHY THIS FILE EXISTS
  * --------------------
- * Repository analysis will eventually accept a GitHub URL, fetch repo data,
- * score it, and ask Gemini for insights. This controller will orchestrate
- * those steps — but GitHub/AI work is intentionally NOT implemented yet.
+ * Controllers are the HTTP "traffic cops":
+ *   1) read the request body
+ *   2) call services / utilities
+ *   3) send a consistent response
  *
- * Controllers stay thin: validate input → call services → send response.
+ * They do NOT call the GitHub API directly — that stays in githubService.
  */
 
+import { fetchRepositoryBundle } from '../services/githubService.js'
+import { parseGitHubUrl } from '../utils/githubParser.js'
+import { successResponse } from '../utils/response.js'
+
 /**
- * Analyze a GitHub repository (PLACEHOLDER).
- * TODO: Read owner/repo from the request body or params.
- * TODO: Call githubService to fetch repository metadata.
- * TODO: Call scoringService to compute health/activity scores.
- * TODO: Call aiService to generate a human-readable summary.
- * TODO: Return successResponse with the combined analysis payload.
+ * POST /api/repository/analyze
+ * Body: { "url": "https://github.com/facebook/react" }
+ *
+ * Flow: validate URL → extract owner/repo → fetch GitHub data → respond.
  */
-export async function analyzeRepository(_request, _response, next) {
-  // Placeholder keeps the function async-ready without pretending the
-  // feature already works. next(error) remains available for real work.
-  const error = new Error('Repository analysis is not implemented yet')
-  error.statusCode = 501
-  return next(error)
+export async function analyzeRepository(request, response, next) {
+  try {
+    const { url } = request.body ?? {}
+
+    // parseGitHubUrl throws a 400 AppError for bad input.
+    const { owner, repo } = parseGitHubUrl(url)
+
+    // Service layer talks to GitHub; controller only orchestrates.
+    const data = await fetchRepositoryBundle(owner, repo)
+
+    return successResponse(response, {
+      statusCode: 200,
+      message: `Repository data fetched for ${owner}/${repo}`,
+      data,
+    })
+  } catch (error) {
+    // Forward to the global error middleware for a consistent failure shape.
+    return next(error)
+  }
 }

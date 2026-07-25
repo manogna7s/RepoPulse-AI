@@ -22,11 +22,13 @@ export function errorMiddleware(error, _request, response, _next) {
   const message = error.message || 'Internal server error'
 
   // In development we include the stack so debugging is faster.
-  // In production we only expose a safe message.
+  // In production we only expose a safe message (+ optional error code).
   const errorDetails =
     env.nodeEnv === 'development'
-      ? { name: error.name, stack: error.stack }
-      : null
+      ? { name: error.name, code: error.code || null, stack: error.stack }
+      : error.code
+        ? { code: error.code }
+        : null
 
   return errorResponse(response, {
     statusCode,
