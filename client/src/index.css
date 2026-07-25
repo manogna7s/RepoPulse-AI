@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+/* Global styles establish predictable defaults; page-specific design stays
+   in React components through Tailwind utilities. */
+@layer base {
+  body {
+    @apply m-0 min-w-80 bg-slate-950 text-slate-100 antialiased;
+  }
+
+  button,
+  a {
+    @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400;
+  }
+}
