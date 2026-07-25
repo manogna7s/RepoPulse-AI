@@ -8,11 +8,6 @@
  *
  * It does NOT open a network port. That keeps the app easy to test:
  * tests can import `app` and fire fake requests without starting a server.
- *
- * WHY SEPARATE FROM server.js?
- * Companies split "configure the app" from "start listening" so:
- *   1) unit/integration tests stay fast and isolated
- *   2) startup concerns (env, DB) stay in one place (server.js)
  */
 
 import cors from 'cors'
@@ -21,22 +16,44 @@ import env from './config/env.js'
 import { errorMiddleware } from './middleware/errorMiddleware.js'
 import { notFound } from './middleware/notFound.js'
 import requestLogger from './middleware/requestLogger.js'
+import debugRouter from './routes/debugRoutes.js'
 import healthRouter from './routes/healthRoutes.js'
+import historyRouter from './routes/historyRoutes.js'
 import repositoryRouter from './routes/repositoryRoutes.js'
 
 const app = express()
 
-// --- Cross-cutting middleware (runs for every request) ---
+// Allow the configured client URL plus common Vite ports during local work.
+const allowedOrigins = new Set([
+  env.clientUrl,
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+])
+
 app.use(requestLogger)
-app.use(cors({ origin: env.clientUrl }))
-app.use(express.json())
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Non-browser tools (curl/Postman) send no Origin header.
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true)
+        return
+      }
+      callback(null, false)
+    },
+  }),
+)
+app.use(express.json({ limit: '2mb' }))
 
-// --- Feature routes (each module owns its own router) ---
 app.use('/api/health', healthRouter)
-// Singular path matches the product API: POST /api/repository/analyze
 app.use('/api/repository', repositoryRouter)
+app.use('/api/history', historyRouter)
 
-// --- Fallback handlers (must stay AFTER routes) ---
+// TEMPORARY: remove /api/debug before production (see debugController.js).
+app.use('/api/debug', debugRouter)
+
 app.use(notFound)
 app.use(errorMiddleware)
 

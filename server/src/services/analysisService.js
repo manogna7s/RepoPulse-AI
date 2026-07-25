@@ -1,0 +1,109 @@
+/**
+ * WHY THIS FILE EXISTS
+ * --------------------
+ * Persistence rules live here — not in controllers.
+ * Controllers hand us an analysis payload; we decide whether to save it,
+ * how to list history, and how to delete.
+ */
+
+import { isDatabaseConnected } from '../config/database.js'
+import RepositoryAnalysis from '../models/RepositoryAnalysis.js'
+import { createAppError } from '../utils/githubParser.js'
+
+const DUPLICATE_WINDOW_MS = 60 * 60 * 1000 // 1 hour
+
+function assertDatabase() {
+  if (!isDatabaseConnected()) {
+    throw createAppError(
+      'MongoDB is not connected. Set MONGODB_URI in server/.env and restart the API.',
+      503,
+      'DATABASE_UNAVAILABLE',
+    )
+  }
+}
+
+/**
+ * Save an analysis unless the same owner/repo was saved within the last hour.
+ *
+ * WHY SKIP DUPLICATES?
+ * Re-clicking "Analyze" during debugging would flood the History page with
+ * near-identical rows and burn MongoDB write capacity. One save per hour per
+ * repo keeps history useful without blocking fresh analyses after that window.
+ */
+export async function saveAnalysisIfNew(payload) {
+  if (!isDatabaseConnected()) {
+    console.warn('Database: skip save — MongoDB is not connected')
+    return { saved: false, reason: 'database_unavailable', analysis: null }
+  }
+
+  const { owner, repositoryName, repositoryUrl } = payload
+  const cutoff = new Date(Date.now() - DUPLICATE_WINDOW_MS)
+
+  const recent = await RepositoryAnalysis.findOne({
+    owner,
+    repositoryName,
+    analysisDate: { $gte: cutoff },
+  })
+    .sort({ analysisDate: -1 })
+    .lean()
+
+  if (recent) {
+    return {
+      saved: false,
+      reason: 'duplicate_within_hour',
+      analysis: recent,
+    }
+  }
+
+  const created = await RepositoryAnalysis.create({
+    repositoryUrl,
+    owner,
+    repositoryName,
+    analysisDate: new Date(),
+    repository: payload.repository,
+    scores: payload.scores,
+    engineeringHealth: payload.engineeringHealth,
+    technicalDebt: payload.technicalDebt || [],
+    technicalDebtMeta: payload.technicalDebtMeta || null,
+  })
+
+  return {
+    saved: true,
+    reason: 'created',
+    analysis: created.toObject(),
+  }
+}
+
+/** Newest analyses first — used by the History page. */
+export async function listAnalyses({ limit = 50 } = {}) {
+  assertDatabase()
+
+  return RepositoryAnalysis.find({})
+    .sort({ analysisDate: -1 })
+    .limit(Math.min(limit, 100))
+    .select(
+      'repositoryUrl owner repositoryName analysisDate engineeringHealth repository.name repository.fullName repository.owner createdAt',
+    )
+    .lean()
+}
+
+/** Full document for replaying an analysis on the dashboard. */
+export async function getAnalysisById(id) {
+  assertDatabase()
+
+  const analysis = await RepositoryAnalysis.findById(id).lean()
+  if (!analysis) {
+    throw createAppError('Analysis not found.', 404, 'ANALYSIS_NOT_FOUND')
+  }
+  return analysis
+}
+
+export async function deleteAnalysisById(id) {
+  assertDatabase()
+
+  const deleted = await RepositoryAnalysis.findByIdAndDelete(id).lean()
+  if (!deleted) {
+    throw createAppError('Analysis not found.', 404, 'ANALYSIS_NOT_FOUND')
+  }
+  return deleted
+}

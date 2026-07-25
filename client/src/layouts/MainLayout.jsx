@@ -1,10 +1,8 @@
 import { Outlet } from 'react-router-dom'
 import Footer from '../components/common/Footer'
 import Navbar from '../components/common/Navbar'
+import ScrollToTopButton from '../components/common/ScrollToTopButton'
 
-// A layout owns UI shared by multiple pages. Outlet is the placeholder where
-// React Router renders the page matching the current URL. flex-col + flex-1
-// keeps the footer at the bottom even on short pages.
 function MainLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-950">
@@ -13,6 +11,7 @@ function MainLayout() {
         <Outlet />
       </main>
       <Footer />
+      <ScrollToTopButton />
     </div>
   )
 }

@@ -11,10 +11,14 @@ const getLinkClass = ({ isActive }) =>
   }`
 
 function Navbar() {
-  // Mobile menus need local open/closed state; nothing else needs to know.
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-
   const closeMenu = () => setIsMenuOpen(false)
+
+  const links = [
+    { to: '/', label: 'Home' },
+    { to: '/dashboard', label: 'Dashboard' },
+    { to: '/history', label: 'History' },
+  ]
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
@@ -31,14 +35,12 @@ function Navbar() {
           </span>
         </NavLink>
 
-        {/* Desktop navigation */}
         <div className="hidden items-center gap-2 md:flex">
-          <NavLink to="/" className={getLinkClass}>
-            Home
-          </NavLink>
-          <NavLink to="/dashboard" className={getLinkClass}>
-            Dashboard
-          </NavLink>
+          {links.map((link) => (
+            <NavLink key={link.to} to={link.to} end={link.to === '/'} className={getLinkClass}>
+              {link.label}
+            </NavLink>
+          ))}
           <a
             href={GITHUB_REPO_URL}
             target="_blank"
@@ -50,7 +52,6 @@ function Navbar() {
           </a>
         </div>
 
-        {/* Mobile toggle */}
         <button
           type="button"
           onClick={() => setIsMenuOpen((open) => !open)}
@@ -71,12 +72,17 @@ function Navbar() {
       {isMenuOpen && (
         <div className="border-t border-slate-800 px-4 pb-4 md:hidden">
           <div className="flex flex-col gap-1 pt-3">
-            <NavLink to="/" onClick={closeMenu} className={getLinkClass}>
-              Home
-            </NavLink>
-            <NavLink to="/dashboard" onClick={closeMenu} className={getLinkClass}>
-              Dashboard
-            </NavLink>
+            {links.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end={link.to === '/'}
+                onClick={closeMenu}
+                className={getLinkClass}
+              >
+                {link.label}
+              </NavLink>
+            ))}
             <a
               href={GITHUB_REPO_URL}
               target="_blank"

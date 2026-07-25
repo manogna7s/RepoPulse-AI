@@ -9,8 +9,10 @@
  * They do NOT call the GitHub API directly — that stays in githubService.
  * They do NOT calculate scores — that stays in scoringService /
  * technicalDebtService.
+ * They do NOT write MongoDB documents — that stays in analysisService.
  */
 
+import { saveAnalysisIfNew } from '../services/analysisService.js'
 import { fetchRepositoryBundle } from '../services/githubService.js'
 import { calculateRepositoryScores } from '../services/scoringService.js'
 import { analyzeTechnicalDebt } from '../services/technicalDebtService.js'
@@ -26,9 +28,8 @@ import { successResponse } from '../utils/response.js'
  *   → fetch GitHub bundle
  *   → engineering health scores
  *   → technical debt prediction
+ *   → persist (unless duplicate within 1 hour)
  *   → respond
- *
- * Deliberately does NOT call Gemini / AI in this phase.
  */
 export async function analyzeRepository(request, response, next) {
   try {
@@ -36,6 +37,7 @@ export async function analyzeRepository(request, response, next) {
 
     // parseGitHubUrl throws a 400 AppError for bad input.
     const { owner, repo } = parseGitHubUrl(url)
+    const repositoryUrl = `https://github.com/${owner}/${repo}`
 
     // 1) Fetch raw signals from GitHub (network I/O only).
     const bundle = await fetchRepositoryBundle(owner, repo)
@@ -55,6 +57,7 @@ export async function analyzeRepository(request, response, next) {
       contributors: bundle.contributors,
       languages: bundle.languages,
       releases: bundle.releases,
+      commits: bundle.commits,
       dependencyFiles: (bundle.rootContents || [])
         .filter((item) => item.type === 'file')
         .map((item) => item.name),
@@ -68,15 +71,33 @@ export async function analyzeRepository(request, response, next) {
         : { exists: false },
     }
 
+    const analysisPayload = {
+      repository,
+      scores,
+      engineeringHealth,
+      technicalDebt: debtResult.technicalDebt,
+      technicalDebtMeta: debtResult.meta,
+    }
+
+    // 5) Persist for History — skipped when DB is down or analyzed recently.
+    const persistence = await saveAnalysisIfNew({
+      repositoryUrl,
+      owner,
+      repositoryName: repo,
+      ...analysisPayload,
+    })
+
     return successResponse(response, {
       statusCode: 200,
       message: `Engineering analysis complete for ${owner}/${repo}`,
       data: {
-        repository,
-        scores,
-        engineeringHealth,
-        technicalDebt: debtResult.technicalDebt,
-        technicalDebtMeta: debtResult.meta,
+        ...analysisPayload,
+        persistence: {
+          saved: persistence.saved,
+          reason: persistence.reason,
+          analysisId: persistence.analysis?._id || null,
+          analysisDate: persistence.analysis?.analysisDate || null,
+        },
       },
     })
   } catch (error) {

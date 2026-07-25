@@ -42,6 +42,63 @@ function createGitHubClient() {
 }
 
 /**
+ * TEMPORARY — used by GET /api/debug/github to verify token wiring.
+ * Returns whether the token loaded, whether GitHub accepted it, remaining
+ * rate limit, and the authenticated login when available.
+ */
+export async function getGitHubDebugStatus() {
+  const tokenLoaded = Boolean(env.githubToken)
+
+  if (!tokenLoaded) {
+    return {
+      authenticated: false,
+      remainingRateLimit: null,
+      githubUser: null,
+      tokenLoaded: false,
+    }
+  }
+
+  const client = createGitHubClient()
+
+  try {
+    // /rate_limit works with any valid token and exposes remaining quota.
+    const rateLimitResponse = await client.get('/rate_limit')
+    const remaining =
+      Number(rateLimitResponse.headers['x-ratelimit-remaining']) ||
+      rateLimitResponse.data?.resources?.core?.remaining ||
+      null
+
+    let githubUser = null
+    try {
+      const userResponse = await client.get('/user')
+      githubUser = userResponse.data?.login || null
+    } catch {
+      // Fine-grained tokens may lack user profile scope — still authenticated.
+      githubUser = null
+    }
+
+    return {
+      authenticated: true,
+      remainingRateLimit: remaining,
+      githubUser,
+      tokenLoaded: true,
+    }
+  } catch (error) {
+    if (error.statusCode) throw error
+
+    if (error.response?.status === 401) {
+      throw createAppError(
+        'GitHub rejected the access token. Verify GITHUB_TOKEN in your .env file.',
+        401,
+        'INVALID_TOKEN',
+      )
+    }
+
+    handleGitHubError(error, 'debug', 'github')
+  }
+}
+
+/**
  * Turn Axios / network failures into clear AppErrors for the API client.
  * One responsibility: map low-level failures to user-facing messages.
  */
