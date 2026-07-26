@@ -172,11 +172,18 @@ function History() {
           <Skeleton className="h-20 w-full" />
         </div>
       ) : items.length === 0 ? (
-        <Card className="p-10 text-center">
+        <Card className="p-10 text-center" role="status">
           <h2 className="text-xl font-semibold text-white">No saved analyses yet</h2>
           <p className="mt-2 text-sm text-slate-400">
-            Run an analysis from the home page. Results are stored when MongoDB is connected.
+            {search || ownerFilter
+              ? 'No results match your search or filters. Try clearing them.'
+              : 'Run an analysis from the home page. Results are stored when MongoDB is connected.'}
           </p>
+          <div className="mt-6">
+            <Link to="/">
+              <Button>Analyze a repository</Button>
+            </Link>
+          </div>
         </Card>
       ) : (
         <>

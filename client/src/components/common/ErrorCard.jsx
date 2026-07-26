@@ -4,9 +4,12 @@ import Card from '../ui/Card'
 // component keeps every failure looking consistent across pages.
 function ErrorCard({ title, message, code, onRetry }) {
   return (
-    <Card className="border-rose-500/30 bg-rose-500/5 p-6 text-left">
+    <Card className="border-rose-500/30 bg-rose-500/5 p-6 text-left" role="alert">
       <div className="flex items-start gap-4">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-rose-500/15 text-rose-300">
+        <span
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-rose-500/15 text-rose-300"
+          aria-hidden="true"
+        >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 8v5M12 16.5v.5" strokeLinecap="round" />
             <circle cx="12" cy="12" r="9" />
@@ -25,7 +28,7 @@ function ErrorCard({ title, message, code, onRetry }) {
             <button
               type="button"
               onClick={onRetry}
-              className="mt-4 text-sm font-semibold text-rose-200 underline-offset-4 hover:underline"
+              className="mt-4 text-sm font-semibold text-rose-200 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-300"
             >
               Try again
             </button>

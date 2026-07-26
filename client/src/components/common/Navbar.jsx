@@ -27,8 +27,16 @@ function Navbar() {
         aria-label="Main navigation"
         className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6"
       >
-        <NavLink to="/" onClick={closeMenu} className="flex items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-cyan-400 font-bold text-slate-950">
+        <NavLink
+          to="/"
+          onClick={closeMenu}
+          className="flex items-center gap-2"
+          aria-label={`${APP_NAME} home`}
+        >
+          <span
+            className="grid h-9 w-9 place-items-center rounded-xl bg-cyan-400 font-bold text-slate-950"
+            aria-hidden="true"
+          >
             R
           </span>
           <span className="text-lg font-bold tracking-tight text-white">
@@ -57,6 +65,7 @@ function Navbar() {
           type="button"
           onClick={() => setIsMenuOpen((open) => !open)}
           aria-expanded={isMenuOpen}
+          aria-controls="mobile-nav"
           aria-label="Toggle navigation menu"
           className="rounded-lg border border-slate-700 p-2 text-slate-200 md:hidden"
         >
@@ -71,8 +80,8 @@ function Navbar() {
       </nav>
 
       {isMenuOpen && (
-        <div className="border-t border-slate-800 px-4 pb-4 md:hidden">
-          <div className="flex flex-col gap-1 pt-3">
+        <div id="mobile-nav" className="border-t border-slate-800 px-4 pb-4 md:hidden">
+          <div className="flex flex-col gap-1 pt-3" role="menu" aria-label="Mobile navigation">
             {links.map((link) => (
               <NavLink
                 key={link.to}

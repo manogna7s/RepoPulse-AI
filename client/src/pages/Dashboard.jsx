@@ -5,6 +5,7 @@ import HealthScoreCard from '../components/dashboard/HealthScoreCard'
 import RepositoryHeader from '../components/dashboard/RepositoryHeader'
 import ScoreCard from '../components/dashboard/ScoreCard'
 import TechnicalDebtTable from '../components/dashboard/TechnicalDebtTable'
+import EmptyState from '../components/common/EmptyState'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import Skeleton from '../components/ui/Skeleton'
@@ -27,26 +28,6 @@ function ChartFallback() {
 
 const MemoScoreCard = memo(ScoreCard)
 
-function EmptyState() {
-  return (
-    <Card className="mx-auto max-w-xl p-10 text-center">
-      <h1 className="text-2xl font-bold text-white">No analysis yet</h1>
-      <p className="mt-3 text-sm leading-6 text-slate-400">
-        Analyze a public GitHub repository to see engineering health scores,
-        AI insights, charts, and technical debt hotspots here.
-      </p>
-      <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-        <Link to="/">
-          <Button>Analyze a repository</Button>
-        </Link>
-        <Link to="/history">
-          <Button variant="secondary">Open history</Button>
-        </Link>
-      </div>
-    </Card>
-  )
-}
-
 function Dashboard() {
   useDocumentTitle('Dashboard')
 
@@ -54,7 +35,16 @@ function Dashboard() {
     useAnalysis()
 
   if (!repository) {
-    return <EmptyState />
+    return (
+      <EmptyState
+        title="No analysis yet"
+        message="Analyze a public GitHub repository to see engineering health scores, AI insights, charts, and technical debt hotspots here."
+        actionLabel="Analyze a repository"
+        actionTo="/"
+        secondaryLabel="Open history"
+        secondaryTo="/history"
+      />
+    )
   }
 
   const analysisDate =

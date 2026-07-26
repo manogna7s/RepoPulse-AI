@@ -1,6 +1,7 @@
 import useDocumentTitle from '../hooks/useDocumentTitle'
 import useRepositoryAnalysis from '../hooks/useRepositoryAnalysis'
 import ErrorCard from '../components/common/ErrorCard'
+import NetworkError from '../components/common/NetworkError'
 import RepositoryInput from '../components/repository/RepositoryInput'
 
 const FEATURES = [
@@ -16,13 +17,19 @@ function Home() {
   const { url, updateUrl, submit, isLoading, validationError, requestError } =
     useRepositoryAnalysis()
 
+  const isNetworkError =
+    requestError?.code === 'NETWORK_ERROR' || requestError?.code === 'TIMEOUT'
+
   return (
-    <section className="flex flex-col items-center text-center">
+    <section className="flex flex-col items-center text-center" aria-labelledby="home-heading">
       <p className="mb-4 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-400 sm:text-sm">
         Engineering Intelligence for Every Repository
       </p>
 
-      <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+      <h1
+        id="home-heading"
+        className="max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl"
+      >
         RepoPulse <span className="text-cyan-400">AI</span>
       </h1>
 
@@ -44,11 +51,21 @@ function Home() {
 
       {requestError && (
         <div className="mt-6 w-full max-w-2xl">
-          <ErrorCard
-            title={requestError.title}
-            message={requestError.message}
-            code={requestError.code}
-          />
+          {isNetworkError ? (
+            <NetworkError
+              title={requestError.title}
+              message={requestError.message}
+              code={requestError.code}
+              onRetry={submit}
+            />
+          ) : (
+            <ErrorCard
+              title={requestError.title}
+              message={requestError.message}
+              code={requestError.code}
+              onRetry={submit}
+            />
+          )}
         </div>
       )}
 

@@ -115,7 +115,12 @@ function Compare() {
       </div>
 
       {error && (
-        <ErrorCard title={error.title} message={error.message} code={error.code} />
+        <ErrorCard
+          title={error.title}
+          message={error.message}
+          code={error.code}
+          onRetry={history.length >= 2 ? runCompare : undefined}
+        />
       )}
 
       {isLoadingList ? (

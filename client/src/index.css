@@ -7,6 +7,11 @@
     @apply m-0 min-w-80 bg-slate-950 text-slate-100 antialiased;
   }
 
+  /* Prefer cyan accents that remain readable on slate backgrounds (a11y). */
+  ::selection {
+    @apply bg-cyan-400/30 text-white;
+  }
+
   button,
   a {
     @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400;
