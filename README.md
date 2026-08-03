@@ -6,6 +6,8 @@ Paste a repository URL to measure **documentation quality**, **community health*
 
 **Live stack:** React · Vite · Tailwind · Recharts · Express · MongoDB · GitHub REST API · Google Gemini
 
+Demo Link: https://repo-pulse-ai-pi.vercel.app/
+
 ---
 
 ## Project Overview
@@ -74,32 +76,6 @@ cd RepoPulse-AI
 npm install
 npm --prefix client install
 npm --prefix server install
-```
-
----
-
-## Environment Variables
-
-### Backend — `server/.env`
-
-Copy from `server/.env.example`:
-
-```env
-PORT=5000
-MONGODB_URI=
-GITHUB_TOKEN=
-GEMINI_API_KEY=
-CLIENT_URL=http://localhost:5173
-```
-
-Never commit real secrets. `.env` is gitignored.
-
-### Frontend — `client/.env`
-
-Copy from `client/.env.example`:
-
-```env
-VITE_API_URL=http://localhost:5000/api
 ```
 
 ---
@@ -191,23 +167,6 @@ Full reference: **[docs/API.md](docs/API.md)**
 | `GET` | `/api/health` | Liveness + DB status |
 
 ---
-
-## Screenshots
-
-> Add screenshots after deploy (recommended for your portfolio README):
-
-1. Home — URL input + feature strip  
-2. Dashboard — health score + score cards  
-3. Charts — radar / languages / debt  
-4. History — searchable table  
-5. Compare — improved / declined badges  
-
-Place images under `docs/screenshots/` and link them here, for example:
-
-```markdown
-![Dashboard](docs/screenshots/dashboard.png)
-```
-
 ---
 
 ## Future Roadmap
@@ -227,14 +186,3 @@ MIT — see [LICENSE](LICENSE) if present, or treat this repository as MIT for p
 
 ---
 
-## Contributing
-
-Issues and pull requests are welcome.
-
-1. Fork the repo and create a feature branch  
-2. Keep changes focused (do not mix unrelated refactors)  
-3. Never commit `.env` or API keys  
-4. Open a PR with a short summary and test notes  
-
-Portfolio / resume copy: [docs/RESUME.md](docs/RESUME.md)  
-Interview prep: [docs/INTERVIEW_GUIDE.md](docs/INTERVIEW_GUIDE.md)
