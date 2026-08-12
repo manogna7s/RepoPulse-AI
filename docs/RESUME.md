@@ -59,4 +59,4 @@ RepoPulse AI turns a repository URL into a structured engineering report: heuris
 
 ### Stack
 
-React 19 · Vite · Tailwind · React Router · Axios · Recharts · Express · Mongoose · MongoDB Atlas · GitHub REST API · Google Gemini 2.5 Pro
+React 19 · Vite · Tailwind · React Router · Axios · Recharts · Express · Mongoose · MongoDB Atlas · GitHub REST API · Google Gemini 3.5 Flash

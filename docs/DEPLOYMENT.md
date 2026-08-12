@@ -35,7 +35,7 @@ Optional: use the root `render.yaml` Blueprint instead of manual setup.
 | `GITHUB_TOKEN`   | yes      | Fine-grained or classic PAT |
 | `GEMINI_API_KEY` | recommended | Google AI Studio key |
 | `EXTRA_CORS_ORIGINS` | no  | Extra Vercel preview URLs (comma-separated) |
-| `GEMINI_MODEL`   | no       | `gemini-2.5-pro` |
+| `GEMINI_MODEL`   | no       | `gemini-3.5-flash` |
 
 \* Render injects `PORT`. The app reads `process.env.PORT`.
 

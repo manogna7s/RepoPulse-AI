@@ -25,6 +25,6 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
-        value: gemini-2.5-pro
+        value: gemini-3.5-flash
       - key: EXTRA_CORS_ORIGINS
         sync: false

@@ -19,7 +19,8 @@ const env = {
   mongoUri: process.env.MONGODB_URI || '',
   githubToken: process.env.GITHUB_TOKEN || '',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
-  geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-pro',
+  // gemini-2.5-pro is blocked for many new API keys; 3.5 Flash is the current default.
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
   // Analyze can take 30–90s on large repos; keep under hosting limits.
   requestTimeoutMs: Number(process.env.REQUEST_TIMEOUT_MS) || 120000,
 }
