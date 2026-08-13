@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { APP_NAME, GITHUB_REPO_URL } from '../../constants'
+import { useAuth } from '../../context/useAuth'
+import Button from '../ui/Button'
 import GitHubIcon from '../ui/GitHubIcon'
 
 const getLinkClass = ({ isActive }) =>
@@ -13,6 +15,7 @@ const getLinkClass = ({ isActive }) =>
 function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const closeMenu = () => setIsMenuOpen(false)
+  const { user, isSignedIn, isReady, login, logout } = useAuth()
 
   const links = [
     { to: '/', label: 'Home' },
@@ -59,6 +62,29 @@ function Navbar() {
             <GitHubIcon className="h-4 w-4" />
             GitHub
           </a>
+          {isReady &&
+            (isSignedIn ? (
+              <div className="ml-2 flex items-center gap-2">
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt=""
+                    className="h-8 w-8 rounded-full ring-1 ring-slate-700"
+                  />
+                ) : null}
+                <span className="max-w-28 truncate text-sm text-slate-300" title={user.login}>
+                  {user.login}
+                </span>
+                <Button variant="secondary" className="px-3 py-2 text-xs" onClick={logout}>
+                  Sign out
+                </Button>
+              </div>
+            ) : (
+              <Button className="ml-2 px-3 py-2 text-xs" onClick={login}>
+                <GitHubIcon className="h-4 w-4" />
+                Sign in
+              </Button>
+            ))}
         </div>
 
         <button
@@ -102,6 +128,30 @@ function Navbar() {
               <GitHubIcon className="h-4 w-4" />
               {APP_NAME} on GitHub
             </a>
+            {isReady &&
+              (isSignedIn ? (
+                <button
+                  type="button"
+                  className="rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white"
+                  onClick={() => {
+                    closeMenu()
+                    logout()
+                  }}
+                >
+                  Sign out ({user.login})
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="rounded-lg px-3 py-2 text-left text-sm font-medium text-cyan-300 hover:bg-slate-800"
+                  onClick={() => {
+                    closeMenu()
+                    login()
+                  }}
+                >
+                  Sign in with GitHub
+                </button>
+              ))}
           </div>
         </div>
       )}

@@ -1,6 +1,8 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { AnalysisProvider } from './context/AnalysisContext'
+import { AuthProvider } from './context/AuthContext'
 import MainLayout from './layouts/MainLayout'
+import AuthCallback from './pages/AuthCallback'
 import Compare from './pages/Compare'
 import Dashboard from './pages/Dashboard'
 import History from './pages/History'
@@ -18,6 +20,7 @@ const router = createBrowserRouter([
       { path: 'dashboard', element: <Dashboard /> },
       { path: 'history', element: <History /> },
       { path: 'compare', element: <Compare /> },
+      { path: 'auth/callback', element: <AuthCallback /> },
       { path: '*', element: <NotFound /> },
     ],
   },
@@ -25,9 +28,11 @@ const router = createBrowserRouter([
 
 function App() {
   return (
-    <AnalysisProvider>
-      <RouterProvider router={router} />
-    </AnalysisProvider>
+    <AuthProvider>
+      <AnalysisProvider>
+        <RouterProvider router={router} />
+      </AnalysisProvider>
+    </AuthProvider>
   )
 }
 

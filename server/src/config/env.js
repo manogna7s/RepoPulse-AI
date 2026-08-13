@@ -18,6 +18,14 @@ const env = {
   extraCorsOrigins: process.env.EXTRA_CORS_ORIGINS || '',
   mongoUri: process.env.MONGODB_URI || '',
   githubToken: process.env.GITHUB_TOKEN || '',
+  githubClientId: process.env.GITHUB_CLIENT_ID || '',
+  githubClientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+  githubCallbackUrl:
+    process.env.GITHUB_CALLBACK_URL || 'http://localhost:5000/api/auth/github/callback',
+  githubOAuthScopes: process.env.GITHUB_OAUTH_SCOPES || 'read:user repo',
+  jwtSecret: process.env.JWT_SECRET || '',
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  tokenEncryptionKey: process.env.TOKEN_ENCRYPTION_KEY || '',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   // gemini-2.5-pro is blocked for many new API keys; 3.5 Flash is the current default.
   geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash',

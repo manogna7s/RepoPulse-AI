@@ -25,15 +25,40 @@ All error responses use:
 
 ---
 
+## Auth
+
+### GET `/api/auth/github`
+
+Starts GitHub OAuth. Browser redirect — do not call with Axios.
+
+### GET `/api/auth/github/callback`
+
+GitHub redirects here. The API exchanges the code, stores the encrypted token, then redirects to `/auth/callback?token=…` on the frontend.
+
+### GET `/api/auth/me`
+
+Optional `Authorization: Bearer <jwt>`. Returns `{ user, oauthConfigured }`.
+
+### POST `/api/auth/logout`
+
+Client-side session clear. JWT is stateless; the UI drops the token.
+
+---
+
 ## POST `/api/repository/analyze`
 
-Runs the full engineering analysis pipeline for a public GitHub repository.
+Runs the full engineering analysis pipeline.
+
+Guests can analyze **public** repos (server `GITHUB_TOKEN`).  
+Signed-in users can also analyze **private** repos they can access (their OAuth token).  
+Optional header: `Authorization: Bearer <jwt>`
 
 ### Request
 
 ```http
 POST /api/repository/analyze
 Content-Type: application/json
+Authorization: Bearer <jwt>
 ```
 
 ```json
@@ -92,7 +117,7 @@ Content-Type: application/json
 
 ## GET `/api/history`
 
-Lists previously saved analyses (requires MongoDB).
+Lists previously saved analyses for the **signed-in user** (requires MongoDB + JWT).
 
 ### Query parameters
 

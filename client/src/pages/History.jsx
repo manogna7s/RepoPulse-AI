@@ -5,6 +5,7 @@ import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import Skeleton from '../components/ui/Skeleton'
 import { useAnalysis } from '../context/useAnalysis'
+import { useAuth } from '../context/useAuth'
 import useDocumentTitle from '../hooks/useDocumentTitle'
 import { deleteHistoryById, fetchHistory, fetchHistoryById } from '../services/historyService'
 import { formatDate } from '../utils/format'
@@ -13,6 +14,7 @@ function History() {
   useDocumentTitle('History')
   const navigate = useNavigate()
   const { saveAnalysis } = useAnalysis()
+  const { isSignedIn, isReady, login } = useAuth()
 
   const [items, setItems] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -156,7 +158,19 @@ function History() {
         </label>
       </Card>
 
-      {error && (
+      {isReady && !isSignedIn ? (
+        <Card className="p-10 text-center" role="status">
+          <h2 className="text-xl font-semibold text-white">Sign in to view history</h2>
+          <p className="mt-2 text-sm text-slate-400">
+            Saved analyses are private to your GitHub account, including private repositories you analyzed.
+          </p>
+          <div className="mt-6">
+            <Button onClick={login}>Sign in with GitHub</Button>
+          </div>
+        </Card>
+      ) : null}
+
+      {error && isSignedIn && (
         <ErrorCard
           title={error.title}
           message={error.message}
@@ -165,13 +179,13 @@ function History() {
         />
       )}
 
-      {isLoading ? (
+      {isSignedIn && isLoading ? (
         <div className="space-y-3">
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
         </div>
-      ) : items.length === 0 ? (
+      ) : isSignedIn && items.length === 0 ? (
         <Card className="p-10 text-center" role="status">
           <h2 className="text-xl font-semibold text-white">No saved analyses yet</h2>
           <p className="mt-2 text-sm text-slate-400">
@@ -185,7 +199,7 @@ function History() {
             </Link>
           </div>
         </Card>
-      ) : (
+      ) : isSignedIn ? (
         <>
           <Card className="hidden overflow-hidden lg:block">
             <div className="overflow-x-auto">

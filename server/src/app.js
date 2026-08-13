@@ -5,6 +5,7 @@
  */
 
 import compression from 'compression'
+import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
 import env from './config/env.js'
@@ -13,6 +14,7 @@ import { notFound } from './middleware/notFound.js'
 import requestLogger from './middleware/requestLogger.js'
 import { requestTimeout } from './middleware/requestTimeout.js'
 import { analyzeRateLimiter, apiRateLimiter, securityHeaders } from './middleware/security.js'
+import authRouter from './routes/authRoutes.js'
 import debugRouter from './routes/debugRoutes.js'
 import healthRouter from './routes/healthRoutes.js'
 import historyRouter from './routes/historyRoutes.js'
@@ -73,14 +75,18 @@ app.use(
       logger.warn('CORS blocked origin', { origin })
       callback(null, false)
     },
+    credentials: true,
   }),
 )
+
+app.use(cookieParser())
 
 // Hard limit request bodies so oversized payloads cannot exhaust memory.
 app.use(express.json({ limit: '1mb' }))
 app.use(apiRateLimiter())
 
 app.use('/api/health', healthRouter)
+app.use('/api/auth', authRouter)
 app.use('/api/repository', analyzeRateLimiter(), repositoryRouter)
 app.use('/api/history', historyRouter)
 

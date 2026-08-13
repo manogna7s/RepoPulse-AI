@@ -3,6 +3,9 @@ import useRepositoryAnalysis from '../hooks/useRepositoryAnalysis'
 import ErrorCard from '../components/common/ErrorCard'
 import NetworkError from '../components/common/NetworkError'
 import RepositoryInput from '../components/repository/RepositoryInput'
+import Button from '../components/ui/Button'
+import GitHubIcon from '../components/ui/GitHubIcon'
+import { useAuth } from '../context/useAuth'
 
 const FEATURES = [
   { title: 'Documentation', text: 'README depth, setup and usage guidance.' },
@@ -16,6 +19,7 @@ function Home() {
 
   const { url, updateUrl, submit, isLoading, validationError, requestError } =
     useRepositoryAnalysis()
+  const { isSignedIn, login, user, isReady } = useAuth()
 
   const isNetworkError =
     requestError?.code === 'NETWORK_ERROR' || requestError?.code === 'TIMEOUT'
@@ -34,10 +38,25 @@ function Home() {
       </h1>
 
       <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-slate-400 sm:text-lg sm:leading-8">
-        Analyze any public GitHub repository to measure engineering quality,
-        documentation, community health, development activity, dependency health
-        and technical debt.
+        Analyze public GitHub repositories for engineering quality, documentation,
+        community health, activity, dependency hygiene, and technical debt.
+        Sign in with GitHub to analyze private repos you can access and save personal history.
       </p>
+
+      {isReady && (
+        <div className="mt-6">
+          {isSignedIn ? (
+            <p className="text-sm text-emerald-300">
+              Signed in as <span className="font-semibold">{user.login}</span> — private repos you can access are included.
+            </p>
+          ) : (
+            <Button variant="secondary" onClick={login}>
+              <GitHubIcon className="h-4 w-4" />
+              Sign in with GitHub for private repos
+            </Button>
+          )}
+        </div>
+      )}
 
       <div className="mt-10 w-full">
         <RepositoryInput

@@ -32,7 +32,12 @@ Optional: use the root `render.yaml` Blueprint instead of manual setup.
 | `PORT`           | yes*     | Render sets this automatically — do not hardcode conflicting values |
 | `CLIENT_URL`     | yes      | `https://your-app.vercel.app` |
 | `MONGODB_URI`    | yes      | Atlas URI with `/repopulse` path |
-| `GITHUB_TOKEN`   | yes      | Fine-grained or classic PAT |
+| `GITHUB_TOKEN`   | yes      | Fine-grained or classic PAT (guest public analysis) |
+| `GITHUB_CLIENT_ID` | yes for login | GitHub OAuth App client ID |
+| `GITHUB_CLIENT_SECRET` | yes for login | GitHub OAuth App secret |
+| `GITHUB_CALLBACK_URL` | yes for login | `https://<your-render-service>.onrender.com/api/auth/github/callback` |
+| `JWT_SECRET` | yes for login | long random string |
+| `TOKEN_ENCRYPTION_KEY` | yes for login | long random string (encrypts GitHub tokens at rest) |
 | `GEMINI_API_KEY` | recommended | Google AI Studio key |
 | `EXTRA_CORS_ORIGINS` | no  | Extra Vercel preview URLs (comma-separated) |
 | `GEMINI_MODEL`   | no       | `gemini-3.5-flash` |
@@ -81,7 +86,18 @@ After both URLs exist:
 
 ---
 
-## 3. MongoDB Atlas
+## 3. GitHub OAuth App
+
+1. GitHub → **Settings** → **Developer settings** → **OAuth Apps** → **New OAuth App**
+2. Homepage URL: your Vercel origin (`https://your-app.vercel.app`)
+3. Authorization callback URL: `https://repopulse-ai.onrender.com/api/auth/github/callback`
+4. Copy Client ID + Client Secret into Render env vars
+5. Generate random `JWT_SECRET` and `TOKEN_ENCRYPTION_KEY` (32+ characters each)
+6. Local callback is `http://localhost:5000/api/auth/github/callback` — use a second OAuth App or update the callback when switching environments
+
+---
+
+## 4. MongoDB Atlas
 
 1. Create a cluster and database user
 2. Network Access → allow Render IPs (or `0.0.0.0/0` for demos)

@@ -41,6 +41,7 @@ export async function saveAnalysisIfNew(payload) {
   const recent = await RepositoryAnalysis.findOne({
     owner,
     repositoryName,
+    userId: payload.userId || null,
     analysisDate: { $gte: cutoff },
   })
     .sort({ analysisDate: -1 })
@@ -58,6 +59,8 @@ export async function saveAnalysisIfNew(payload) {
     repositoryUrl,
     owner,
     repositoryName,
+    userId: payload.userId || null,
+    isPrivate: Boolean(payload.isPrivate),
     analysisDate: new Date(),
     repository: payload.repository,
     scores: payload.scores,
@@ -82,10 +85,11 @@ export async function listAnalyses({
   search = '',
   owner = '',
   sort = 'newest',
+  userId,
 } = {}) {
   assertDatabase()
 
-  const filter = {}
+  const filter = { userId: userId || null }
 
   if (owner && owner.trim()) {
     filter.owner = new RegExp(`^${escapeRegex(owner.trim())}$`, 'i')
@@ -115,20 +119,23 @@ export async function listAnalyses({
 }
 
 /** Full document for replaying an analysis on the dashboard / compare page. */
-export async function getAnalysisById(id) {
+export async function getAnalysisById(id, { userId } = {}) {
   assertDatabase()
 
   const analysis = await RepositoryAnalysis.findById(id).lean()
-  if (!analysis) {
+  if (!analysis || String(analysis.userId || '') !== String(userId || '')) {
     throw createAppError('Analysis not found.', 404, 'ANALYSIS_NOT_FOUND')
   }
   return analysis
 }
 
-export async function deleteAnalysisById(id) {
+export async function deleteAnalysisById(id, { userId } = {}) {
   assertDatabase()
 
-  const deleted = await RepositoryAnalysis.findByIdAndDelete(id).lean()
+  const deleted = await RepositoryAnalysis.findOneAndDelete({
+    _id: id,
+    userId: userId || null,
+  }).lean()
   if (!deleted) {
     throw createAppError('Analysis not found.', 404, 'ANALYSIS_NOT_FOUND')
   }

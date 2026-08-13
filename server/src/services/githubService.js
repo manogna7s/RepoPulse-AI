@@ -17,28 +17,38 @@ import { createAppError } from '../utils/githubParser.js'
 const GITHUB_API_BASE = 'https://api.github.com'
 
 /**
- * Shared Axios client for every GitHub request.
- * Sets auth + required GitHub headers in one place so we never hardcode tokens.
+ * Prefer the signed-in user's OAuth token so private repos they can access work.
+ * Fall back to the server GITHUB_TOKEN for guest public-repo analysis.
  */
-function createGitHubClient() {
-  if (!env.githubToken) {
+function resolveGitHubToken(accessToken) {
+  const token = accessToken || env.githubToken
+  if (!token) {
     throw createAppError(
-      'GitHub token is missing. Add GITHUB_TOKEN to your server .env file.',
-      500,
+      'GitHub authentication is missing. Sign in with GitHub or add GITHUB_TOKEN to the server environment.',
+      401,
       'MISSING_TOKEN',
     )
   }
+  return token
+}
+
+function createGitHubClient(accessToken) {
+  const token = resolveGitHubToken(accessToken)
 
   return axios.create({
     baseURL: GITHUB_API_BASE,
     timeout: 15000,
     headers: {
       Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${env.githubToken}`,
+      Authorization: `Bearer ${token}`,
       'X-GitHub-Api-Version': '2022-11-28',
       'User-Agent': 'RepoPulse-AI',
     },
   })
+}
+
+function clientFrom(options = {}) {
+  return options.client || createGitHubClient(options.accessToken)
 }
 
 /**
@@ -131,7 +141,7 @@ function handleGitHubError(error, owner, repo) {
 
   if (status === 404) {
     throw createAppError(
-      `Repository not found: ${owner}/${repo}. Check the URL or whether the repo is private.`,
+      `Repository not found: ${owner}/${repo}. If this is a private repo, sign in with GitHub first.`,
       404,
       'REPO_NOT_FOUND',
     )
@@ -139,9 +149,17 @@ function handleGitHubError(error, owner, repo) {
 
   if (status === 401) {
     throw createAppError(
-      'GitHub rejected the access token. Verify GITHUB_TOKEN in your .env file.',
+      'GitHub rejected the access token. Sign in again or verify GITHUB_TOKEN.',
       401,
       'INVALID_TOKEN',
+    )
+  }
+
+  if (status === 403) {
+    throw createAppError(
+      `GitHub denied access to ${owner}/${repo}. Sign in with a GitHub account that can read this repository.`,
+      403,
+      'GITHUB_FORBIDDEN',
     )
   }
 
@@ -156,8 +174,8 @@ function handleGitHubError(error, owner, repo) {
  * Fetch core repository metadata and return a clean internal object.
  * No frontend formatting — only structured raw fields the product needs.
  */
-export async function getRepositoryData(owner, repo) {
-  const client = createGitHubClient()
+export async function getRepositoryData(owner, repo, options = {}) {
+  const client = clientFrom(options)
 
   try {
     const { data } = await client.get(`/repos/${owner}/${repo}`)
@@ -211,11 +229,11 @@ export async function getRepositoryData(owner, repo) {
  * Fetch top contributors for a repository.
  * Returns login, contribution count, avatar, and profile URL.
  */
-export async function getContributors(owner, repo, { perPage = 10 } = {}) {
-  const client = createGitHubClient()
+export async function getContributors(owner, repo, { perPage = 10, client, accessToken } = {}) {
+  const github = clientFrom({ client, accessToken })
 
   try {
-    const { data } = await client.get(`/repos/${owner}/${repo}/contributors`, {
+    const { data } = await github.get(`/repos/${owner}/${repo}/contributors`, {
       params: { per_page: perPage },
     })
 
@@ -245,8 +263,8 @@ export async function getContributors(owner, repo, { perPage = 10 } = {}) {
  * Fetch language byte counts and convert them to percentages.
  * Example output: [{ language: "JavaScript", bytes: 1200, percentage: 80.0 }, ...]
  */
-export async function getLanguages(owner, repo) {
-  const client = createGitHubClient()
+export async function getLanguages(owner, repo, options = {}) {
+  const client = clientFrom(options)
 
   try {
     const { data } = await client.get(`/repos/${owner}/${repo}/languages`)
@@ -276,8 +294,8 @@ export async function getLanguages(owner, repo) {
  * Fetch README markdown (decoded). Returns null when the repo has no README.
  * Needed by documentation scoring — fetching stays here, scoring stays in scoringService.
  */
-export async function getReadme(owner, repo) {
-  const client = createGitHubClient()
+export async function getReadme(owner, repo, options = {}) {
+  const client = clientFrom(options)
 
   try {
     const { data } = await client.get(`/repos/${owner}/${repo}/readme`)
@@ -307,8 +325,8 @@ export async function getReadme(owner, repo) {
  * List root-level files/folders so dependency scoring can detect manifests
  * like package.json or requirements.txt without cloning the repo.
  */
-export async function getRootContents(owner, repo) {
-  const client = createGitHubClient()
+export async function getRootContents(owner, repo, options = {}) {
+  const client = clientFrom(options)
 
   try {
     const { data } = await client.get(`/repos/${owner}/${repo}/contents/`)
@@ -334,11 +352,11 @@ export async function getRootContents(owner, repo) {
 /**
  * Fetch recent commits for activity scoring (date of newest + rough frequency).
  */
-export async function getRecentCommits(owner, repo, { perPage = 30 } = {}) {
-  const client = createGitHubClient()
+export async function getRecentCommits(owner, repo, { perPage = 30, client, accessToken } = {}) {
+  const github = clientFrom({ client, accessToken })
 
   try {
-    const { data } = await client.get(`/repos/${owner}/${repo}/commits`, {
+    const { data } = await github.get(`/repos/${owner}/${repo}/commits`, {
       params: { per_page: perPage },
     })
 
@@ -365,11 +383,11 @@ export async function getRecentCommits(owner, repo, { perPage = 30 } = {}) {
 /**
  * Fetch recent releases for community + activity scoring.
  */
-export async function getReleases(owner, repo, { perPage = 10 } = {}) {
-  const client = createGitHubClient()
+export async function getReleases(owner, repo, { perPage = 10, client, accessToken } = {}) {
+  const github = clientFrom({ client, accessToken })
 
   try {
-    const { data } = await client.get(`/repos/${owner}/${repo}/releases`, {
+    const { data } = await github.get(`/repos/${owner}/${repo}/releases`, {
       params: { per_page: perPage },
     })
 
@@ -403,8 +421,8 @@ export async function getReleases(owner, repo, { perPage = 10 } = {}) {
  * Caching inside a single run avoids duplicate rate-limit spend.
  * The cache is NOT shared across HTTP requests (keeps data fresh).
  */
-export function createGitHubAnalysisContext() {
-  const client = createGitHubClient()
+export function createGitHubAnalysisContext(accessToken) {
+  const client = createGitHubClient(accessToken)
   const cache = new Map()
 
   return {
@@ -602,17 +620,18 @@ export async function getCommitHistoryForFile(owner, repo, path, { context, perP
  * Convenience orchestrator used by the controller.
  * Fetches everything scoring needs in parallel for speed.
  */
-export async function fetchRepositoryBundle(owner, repo) {
+export async function fetchRepositoryBundle(owner, repo, { accessToken } = {}) {
+  const client = createGitHubClient(accessToken)
   const [repository, contributors, languages, readme, rootContents, commits, releases] =
     await Promise.all([
-      getRepositoryData(owner, repo),
+      getRepositoryData(owner, repo, { client }),
       // More contributors improves community heuristics (GitHub max page size is 100).
-      getContributors(owner, repo, { perPage: 100 }),
-      getLanguages(owner, repo),
-      getReadme(owner, repo),
-      getRootContents(owner, repo),
-      getRecentCommits(owner, repo),
-      getReleases(owner, repo),
+      getContributors(owner, repo, { perPage: 100, client }),
+      getLanguages(owner, repo, { client }),
+      getReadme(owner, repo, { client }),
+      getRootContents(owner, repo, { client }),
+      getRecentCommits(owner, repo, { client }),
+      getReleases(owner, repo, { client }),
     ])
 
   return {

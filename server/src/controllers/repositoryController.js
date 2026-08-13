@@ -9,6 +9,7 @@
 
 import { generateRepositoryInsights } from '../services/aiService.js'
 import { saveAnalysisIfNew } from '../services/analysisService.js'
+import { getDecryptedAccessToken } from '../services/authService.js'
 import { fetchRepositoryBundle } from '../services/githubService.js'
 import { calculateRepositoryScores } from '../services/scoringService.js'
 import { analyzeTechnicalDebt } from '../services/technicalDebtService.js'
@@ -33,11 +34,15 @@ export async function analyzeRepository(request, response, next) {
 
     const { owner, repo } = parseGitHubUrl(url)
     const repositoryUrl = `https://github.com/${owner}/${repo}`
+    const accessToken = request.user?._id
+      ? await getDecryptedAccessToken(request.user._id)
+      : undefined
 
-    const bundle = await fetchRepositoryBundle(owner, repo)
+    const bundle = await fetchRepositoryBundle(owner, repo, { accessToken })
     const { scores, engineeringHealth } = calculateRepositoryScores(bundle)
     const debtResult = await analyzeTechnicalDebt(owner, repo, {
       defaultBranch: bundle.repository.defaultBranch,
+      accessToken,
     })
 
     const repository = {
@@ -80,6 +85,8 @@ export async function analyzeRepository(request, response, next) {
       repositoryUrl,
       owner,
       repositoryName: repo,
+      userId: request.user?._id || null,
+      isPrivate: Boolean(bundle.repository?.isPrivate),
       ...analysisPayload,
     })
 

@@ -13,6 +13,16 @@ import mongoose from 'mongoose'
 const repositoryAnalysisSchema = new mongoose.Schema(
   {
     // Canonical URL the user pasted (normalized by the controller before save).
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      index: true,
+    },
+    isPrivate: {
+      type: Boolean,
+      default: false,
+    },
     repositoryUrl: {
       type: String,
       required: true,
@@ -72,6 +82,7 @@ const repositoryAnalysisSchema = new mongoose.Schema(
 
 // Speeds up the "same repo analyzed in the last hour?" duplicate check.
 repositoryAnalysisSchema.index({ owner: 1, repositoryName: 1, analysisDate: -1 })
+repositoryAnalysisSchema.index({ userId: 1, analysisDate: -1 })
 
 const RepositoryAnalysis = mongoose.model('RepositoryAnalysis', repositoryAnalysisSchema)
 

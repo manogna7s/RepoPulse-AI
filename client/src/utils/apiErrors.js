@@ -25,7 +25,8 @@ export function toFriendlyError(error, options = {}) {
 
   const titles = {
     400: 'Invalid repository URL',
-    401: 'GitHub authentication failed',
+    401: backendCode === 'AUTH_REQUIRED' ? 'Sign in required' : 'GitHub authentication failed',
+    403: 'Access denied',
     404: 'Repository not found',
     429: 'Rate limit reached',
     503: 'Database unavailable',

@@ -1,8 +1,8 @@
 # RepoPulse AI
 
-AI-powered engineering intelligence for public GitHub repositories.
+AI-powered engineering intelligence for GitHub repositories.
 
-Paste a repository URL to measure **documentation quality**, **community health**, **development activity**, **dependency hygiene**, **metadata completeness**, and **technical debt** — then read Gemini-assisted explanations on a professional dashboard.
+Paste a repository URL to measure **documentation quality**, **community health**, **development activity**, **dependency hygiene**, **metadata completeness**, and **technical debt** — then read Gemini-assisted explanations on a professional dashboard. Sign in with GitHub to analyze **private repos** you can access and keep personal history.
 
 **Live stack:** React · Vite · Tailwind · Recharts · Express · MongoDB · GitHub REST API · Google Gemini
 
@@ -25,7 +25,8 @@ RepoPulse AI is a full-stack MERN application designed for portfolio and product
 
 ## Features
 
-- Analyze any **public** GitHub repository by URL
+- Analyze **public** GitHub repositories without an account
+- **GitHub OAuth** for end users — private repos + personal history
 - Weighted **engineering health** score + letter grade
 - Five dimension score cards with reasons
 - **Technical debt** hotspot table (risk-ranked files)
@@ -44,8 +45,8 @@ RepoPulse AI is a full-stack MERN application designed for portfolio and product
 Browser (Vercel)                API (Render)                 Externals
 ─────────────────               ────────────                 ─────────
 React pages  ──Axios──►  Routes → Controllers
-Context store            Services (GitHub, scoring,    ◄── GitHub REST
-Charts / History         debt, Gemini, persistence)    ◄── Gemini
+Context store            Services (GitHub, scoring,    ◄── GitHub REST + OAuth
+Charts / History         debt, Gemini, auth)           ◄── Gemini
                          Models (Mongoose)             ◄── MongoDB Atlas
 ```
 
@@ -60,14 +61,14 @@ Charts / History         debt, Gemini, persistence)    ◄── Gemini
 | Frontend | React 19, Vite, Tailwind CSS 4, React Router, Axios, Recharts |
 | Backend | Node.js 20+, Express 5, Mongoose 9 |
 | Data | MongoDB Atlas |
-| Integrations | GitHub REST API, Google Gemini (`@google/genai`) |
+| Integrations | GitHub REST API, GitHub OAuth, Google Gemini (`@google/genai`) |
 | Ops | Helmet, express-rate-limit, compression, Morgan, CORS |
 
 ---
 
 ## Installation
 
-**Prerequisites:** Node.js 20+, npm, MongoDB Atlas account, GitHub PAT, Gemini API key (optional but recommended).
+**Prerequisites:** Node.js 20+, npm, MongoDB Atlas account, GitHub PAT, GitHub OAuth App (for private repos / login), Gemini API key (optional but recommended).
 
 ```bash
 git clone https://github.com/manogna7s/RepoPulse-AI.git
@@ -125,10 +126,10 @@ RepoPulse-AI/
 │   │   ├── charts/              # Lazy-loaded Recharts
 │   │   ├── components/          # UI + dashboard + common
 │   │   ├── constants/           # Shared app constants
-│   │   ├── context/             # Analysis Context
+│   │   ├── context/             # Analysis + Auth context
 │   │   ├── hooks/
 │   │   ├── layouts/
-│   │   ├── pages/               # Home, Dashboard, History, Compare, errors
+│   │   ├── pages/               # Home, Dashboard, History, Compare, Auth callback
 │   │   ├── services/            # Axios API clients
 │   │   └── utils/
 │   ├── vercel.json              # SPA rewrites for Vercel
@@ -140,7 +141,7 @@ RepoPulse-AI/
 │       ├── middleware/          # Security, logging, timeout, errors
 │       ├── models/
 │       ├── routes/
-│       ├── services/            # GitHub, scoring, debt, AI, persistence
+│       ├── services/            # GitHub, scoring, debt, AI, auth, persistence
 │       └── utils/
 ├── docs/
 │   ├── API.md                   # Endpoint documentation
@@ -160,8 +161,10 @@ Full reference: **[docs/API.md](docs/API.md)**
 
 | Method | Path | Purpose |
 |--------|------|---------|
+| `GET` | `/api/auth/github` | Start GitHub OAuth |
+| `GET` | `/api/auth/me` | Current user |
 | `POST` | `/api/repository/analyze` | Full analysis pipeline |
-| `GET` | `/api/history` | List saved analyses |
+| `GET` | `/api/history` | List saved analyses (signed-in) |
 | `GET` | `/api/history/:id` | Load one analysis |
 | `DELETE` | `/api/history/:id` | Delete one analysis |
 | `GET` | `/api/health` | Liveness + DB status |
@@ -171,7 +174,7 @@ Full reference: **[docs/API.md](docs/API.md)**
 
 ## Future Roadmap
 
-- [ ] GitHub OAuth and private repository support  
+- [x] GitHub OAuth and private repository support  
 - [ ] Background job queue for very large repositories  
 - [ ] Deeper dependency / lint-based debt signals  
 - [ ] Historical trend charts across many runs  

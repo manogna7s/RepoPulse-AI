@@ -4,6 +4,7 @@ import ErrorCard from '../components/common/ErrorCard'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import Skeleton from '../components/ui/Skeleton'
+import { useAuth } from '../context/useAuth'
 import useDocumentTitle from '../hooks/useDocumentTitle'
 import { fetchHistory, fetchHistoryById } from '../services/historyService'
 import { compareAnalyses } from '../utils/compareAnalyses'
@@ -34,6 +35,7 @@ function Compare() {
   const [isLoadingList, setIsLoadingList] = useState(true)
   const [isComparing, setIsComparing] = useState(false)
   const [error, setError] = useState(null)
+  const { isSignedIn, isReady, login } = useAuth()
 
   useEffect(() => {
     let cancelled = false
@@ -114,7 +116,19 @@ function Compare() {
         </Link>
       </div>
 
-      {error && (
+      {isReady && !isSignedIn ? (
+        <Card className="p-10 text-center">
+          <h2 className="text-xl font-semibold text-white">Sign in to compare analyses</h2>
+          <p className="mt-2 text-sm text-slate-400">
+            Comparison uses your saved history, including private repositories.
+          </p>
+          <div className="mt-6">
+            <Button onClick={login}>Sign in with GitHub</Button>
+          </div>
+        </Card>
+      ) : null}
+
+      {error && isSignedIn && (
         <ErrorCard
           title={error.title}
           message={error.message}
@@ -123,9 +137,9 @@ function Compare() {
         />
       )}
 
-      {isLoadingList ? (
+      {isSignedIn && isLoadingList ? (
         <Skeleton className="h-40 w-full" />
-      ) : history.length < 2 ? (
+      ) : isSignedIn && history.length < 2 ? (
         <Card className="p-10 text-center">
           <h2 className="text-xl font-semibold text-white">Need at least two analyses</h2>
           <p className="mt-2 text-sm text-slate-400">
@@ -135,7 +149,7 @@ function Compare() {
             <Button>Analyze a repository</Button>
           </Link>
         </Card>
-      ) : (
+      ) : isSignedIn ? (
         <Card className="grid gap-4 p-5 sm:grid-cols-2">
           <label className="text-xs text-slate-400">
             Current analysis
@@ -173,7 +187,7 @@ function Compare() {
         </Card>
       )}
 
-      {comparison && (
+      {isSignedIn && comparison && (
         <div className="space-y-5">
           <Card className="p-6">
             <p className="text-xs uppercase tracking-wide text-slate-500">Overall engineering health</p>

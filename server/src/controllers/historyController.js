@@ -12,7 +12,13 @@ import { successResponse } from '../utils/response.js'
 export async function getHistory(request, response, next) {
   try {
     const { search = '', owner = '', sort = 'newest', limit } = request.query ?? {}
-    const items = await listAnalyses({ search, owner, sort, limit })
+    const items = await listAnalyses({
+      search,
+      owner,
+      sort,
+      limit,
+      userId: request.user._id,
+    })
     return successResponse(response, {
       message: 'Analysis history loaded',
       data: items,
@@ -24,7 +30,7 @@ export async function getHistory(request, response, next) {
 
 export async function getHistoryById(request, response, next) {
   try {
-    const analysis = await getAnalysisById(request.params.id)
+    const analysis = await getAnalysisById(request.params.id, { userId: request.user._id })
     return successResponse(response, {
       message: 'Analysis loaded',
       data: {
@@ -48,7 +54,7 @@ export async function getHistoryById(request, response, next) {
 
 export async function deleteHistoryById(request, response, next) {
   try {
-    await deleteAnalysisById(request.params.id)
+    await deleteAnalysisById(request.params.id, { userId: request.user._id })
     return successResponse(response, {
       message: 'Analysis deleted',
       data: { id: request.params.id },

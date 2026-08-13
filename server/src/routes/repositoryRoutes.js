@@ -7,10 +7,11 @@
 
 import { Router } from 'express'
 import { analyzeRepository } from '../controllers/repositoryController.js'
+import { optionalAuth } from '../middleware/auth.js'
 
 const repositoryRouter = Router()
 
 // POST /api/repository/analyze
-repositoryRouter.post('/analyze', analyzeRepository)
+repositoryRouter.post('/analyze', optionalAuth, analyzeRepository)
 
 export default repositoryRouter

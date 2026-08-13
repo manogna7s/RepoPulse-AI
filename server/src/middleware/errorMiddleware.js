@@ -10,7 +10,7 @@ import { errorResponse } from '../utils/response.js'
 export function errorMiddleware(error, _request, response, _next) {
   const statusCode = error.statusCode || 500
   const message =
-    statusCode >= 500 && env.nodeEnv === 'production'
+    statusCode >= 500 && env.nodeEnv === 'production' && statusCode !== 503
       ? 'Internal server error'
       : error.message || 'Internal server error'
 

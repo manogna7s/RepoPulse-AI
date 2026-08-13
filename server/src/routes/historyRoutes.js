@@ -8,9 +8,11 @@ import {
   getHistory,
   getHistoryById,
 } from '../controllers/historyController.js'
+import { requireAuth } from '../middleware/auth.js'
 
 const historyRouter = Router()
 
+historyRouter.use(requireAuth)
 historyRouter.get('/', getHistory)
 historyRouter.get('/:id', getHistoryById)
 historyRouter.delete('/:id', deleteHistoryById)

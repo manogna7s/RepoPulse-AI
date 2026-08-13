@@ -435,8 +435,8 @@ export function rankTechnicalDebt(fileDebts = [], limit = TOP_DEBT_FILES) {
  *   - cap content fetches and commit-history fetches with concurrency limits
  *   - reuse one cached GitHub context for the whole analysis
  */
-export async function analyzeTechnicalDebt(owner, repo, { defaultBranch } = {}) {
-  const context = createGitHubAnalysisContext()
+export async function analyzeTechnicalDebt(owner, repo, { defaultBranch, accessToken } = {}) {
+  const context = createGitHubAnalysisContext(accessToken)
 
   const tree = await getRepositoryTree(owner, repo, {
     branch: defaultBranch,
