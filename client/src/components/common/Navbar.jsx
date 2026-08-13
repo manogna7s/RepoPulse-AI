@@ -15,7 +15,7 @@ const getLinkClass = ({ isActive }) =>
 function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const closeMenu = () => setIsMenuOpen(false)
-  const { user, isSignedIn, isReady, login, logout } = useAuth()
+  const { user, isSignedIn, login, logout } = useAuth()
 
   const links = [
     { to: '/', label: 'Home' },
@@ -62,8 +62,7 @@ function Navbar() {
             <GitHubIcon className="h-4 w-4" />
             GitHub
           </a>
-          {isReady &&
-            (isSignedIn ? (
+          {isSignedIn ? (
               <div className="ml-2 flex items-center gap-2">
                 {user.avatarUrl ? (
                   <img
@@ -84,7 +83,7 @@ function Navbar() {
                 <GitHubIcon className="h-4 w-4" />
                 Sign in
               </Button>
-            ))}
+            )}
         </div>
 
         <button
@@ -128,8 +127,7 @@ function Navbar() {
               <GitHubIcon className="h-4 w-4" />
               {APP_NAME} on GitHub
             </a>
-            {isReady &&
-              (isSignedIn ? (
+            {isSignedIn ? (
                 <button
                   type="button"
                   className="rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white"
@@ -151,7 +149,7 @@ function Navbar() {
                 >
                   Sign in with GitHub
                 </button>
-              ))}
+              )}
           </div>
         </div>
       )}

@@ -11,7 +11,7 @@ export function getAuthLoginUrl() {
 
 export async function fetchCurrentUser() {
   try {
-    const response = await api.get('/auth/me')
+    const response = await api.get('/auth/me', { timeout: 8000 })
     return response.data.data
   } catch (error) {
     throw toFriendlyError(error)

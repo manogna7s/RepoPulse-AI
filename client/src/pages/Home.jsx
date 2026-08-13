@@ -19,7 +19,7 @@ function Home() {
 
   const { url, updateUrl, submit, isLoading, validationError, requestError } =
     useRepositoryAnalysis()
-  const { isSignedIn, login, user, isReady } = useAuth()
+  const { isSignedIn, login, user } = useAuth()
 
   const isNetworkError =
     requestError?.code === 'NETWORK_ERROR' || requestError?.code === 'TIMEOUT'
@@ -43,8 +43,7 @@ function Home() {
         Sign in with GitHub to analyze private repos you can access and save personal history.
       </p>
 
-      {isReady && (
-        <div className="mt-6">
+      <div className="mt-6">
           {isSignedIn ? (
             <p className="text-sm text-emerald-300">
               Signed in as <span className="font-semibold">{user.login}</span> — private repos you can access are included.
@@ -56,7 +55,6 @@ function Home() {
             </Button>
           )}
         </div>
-      )}
 
       <div className="mt-10 w-full">
         <RepositoryInput

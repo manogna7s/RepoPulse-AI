@@ -185,7 +185,7 @@ function Compare() {
             </Button>
           </div>
         </Card>
-      )}
+      ) : null}
 
       {isSignedIn && comparison && (
         <div className="space-y-5">
