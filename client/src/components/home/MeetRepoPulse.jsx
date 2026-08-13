@@ -92,7 +92,7 @@ function MeetRepoPulse() {
         </h2>
         <p className="mt-4 text-base leading-7 text-slate-400 sm:text-lg sm:leading-8">
           Stars and a README are not enough to judge a repository. RepoPulse treats GitHub data as
-          engineering evidence — then shows health, risk, and a plain-language explanation in one
+          engineering evidence. It then shows health, risk, and a plain-language explanation in one
           dashboard.
         </p>
       </div>
