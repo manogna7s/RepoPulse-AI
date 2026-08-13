@@ -288,7 +288,7 @@ function History() {
             ))}
           </div>
         </>
-      )}
+      ) : null}
     </section>
   )
 }
